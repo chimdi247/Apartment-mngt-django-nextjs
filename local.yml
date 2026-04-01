@@ -1,3 +1,4 @@
+version: "3.9"
 
 services:
   api: &api
@@ -7,10 +8,7 @@ services:
     image: estate_prod_api
     container_name: estate_prod_api
     volumes:
-      - .:/app:z
-      - ./staticfiles:/app/staticfiles
-    # ports:
-    #   - "8000:8000"
+      - ./staticfiles:/app/staticfiles   # ✅ ONLY this (safe)
     expose:
       - "5000"
     env_file:
@@ -44,13 +42,13 @@ services:
     ports:
       - "8025:8025"
       - "1025:1025"
-    volumes:  
+    volumes:
       - estate_prod_mailpit_data:/data
     environment:
       MP_MAX_MESSAGES: 5000
       MP_DATA_FILE: /data/mailpit.db
       MP_SMTP_AUTH_ACCEPT_ANY: 1
-      MP_SMTP_AUTH_ALLOW_INSECURE: 1  
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
     networks:
       - estate_prod_nw
 
@@ -60,16 +58,9 @@ services:
       dockerfile: ./docker/local/Dockerfile
     container_name: estate_client
     image: estate_client
-    # ports:
-    #   - "3000:3000"
     expose:
       - "3000"
-    volumes:
-      - ./client:/app
-      - /app/node_modules
-    # add this line(uncomment it) so that hot module reloading can work when working with windows subsystem for linux. 
-    # environment:
-    #   - WATCHPACK_POLLING=true
+    # ❌ removed volume to avoid permission issues
     networks:
       - estate_prod_nw
 
@@ -102,32 +93,37 @@ services:
       - "5555:5555"
     command: /start-flower
 
-  
   nginx:
     build:
       context: ./docker/local/nginx
       dockerfile: Dockerfile
-    restart: always
     container_name: estate_nginx
+    restart: always
     ports:
       - "8080:80"
     volumes:
-      - ./staticfiles:/app/staticfiles
+      - ./staticfiles:/app/staticfiles   # ✅ shared with Django
       - logs_store:/var/log/nginx
     depends_on:
       - api
+      - client
     networks:
       - estate_prod_nw
-    
 
+
+# -------------------------------
+# Networks
+# -------------------------------
 networks:
   estate_prod_nw:
     driver: bridge
 
+
+# -------------------------------
+# Volumes
+# -------------------------------
 volumes:
-  estate_prod_postgres_data: {}
-  estate_prod_mailpit_data: {}
-  logs_store: {}
-  estate_redis_prod_data: {}
-
-
+  estate_prod_postgres_data:
+  estate_prod_mailpit_data:
+  estate_redis_prod_data:
+  logs_store:
