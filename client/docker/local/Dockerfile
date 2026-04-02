@@ -35,7 +35,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build the app (production build)
+# Ensure production build
+ENV NODE_ENV=production
+
+# Build Next.js app (creates .next/BUILD_ID)
 RUN npm run build
 
 
@@ -52,8 +55,15 @@ ENV NODE_ENV=production
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nextjs -u 1001 -G nodejs
 
-# Copy built app
-COPY --from=builder /app ./
+# Copy only required files (IMPORTANT FIX)
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/next.config.js ./next.config.js
+
+# (Optional but safe)
+# COPY --from=builder /app/.env.production ./.env.production
 
 # Fix permissions
 RUN chown -R nextjs:nodejs /app
@@ -64,5 +74,5 @@ USER nextjs
 # Expose port
 EXPOSE 3000
 
-# Start app in production mode
+# Start app
 CMD ["npm", "start"]

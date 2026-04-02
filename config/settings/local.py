@@ -6,7 +6,7 @@ from .base import *  # noqa
 
 from .base import BASE_DIR
 
-local_env_file = path.join(BASE_DIR, ".envs", ".env.local")
+local_env_file = path.join(BASE_DIR, ".envs", ".env.example")
 
 if path.isfile(local_env_file):
     load_dotenv(local_env_file)
@@ -19,10 +19,10 @@ SECRET_KEY = getenv(
     "DJANGO_SECRET_KEY", "UUc-qwrxzkZFyx4mrxXFfgHpA1VLOIuAojmk8T9q7n35A6-k-yM"
 )
 
-CSRF_TRUSTED_ORIGINS = ["http://localhost:8080"]
+CSRF_TRUSTED_ORIGINS = ["http://localhost:8080", "172.201.250.65"]
 
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0"]
+ALLOWED_HOSTS = ["172.201.250.65", "127.0.0.1", "0.0.0.0"]
 
 ADMIN_URL = getenv("DJANGO_ADMIN_URL")
 EMAIL_BACKEND = "djcelery_email.backends.CeleryEmailBackend"
