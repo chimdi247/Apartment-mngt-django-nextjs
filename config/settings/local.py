@@ -19,10 +19,10 @@ SECRET_KEY = getenv(
     "DJANGO_SECRET_KEY", "UUc-qwrxzkZFyx4mrxXFfgHpA1VLOIuAojmk8T9q7n35A6-k-yM"
 )
 
-CSRF_TRUSTED_ORIGINS = ["http://localhost:8080", "http://172.201.250.65:8000"]
+CSRF_TRUSTED_ORIGINS = ["http://localhost:8080", "http://172.201.250.65:8080"]
 
 
-ALLOWED_HOSTS = ["172.201.250.65", "127.0.0.1", "0.0.0.0"]
+ALLOWED_HOSTS = ["*"]
 
 ADMIN_URL = getenv("DJANGO_ADMIN_URL")
 EMAIL_BACKEND = "djcelery_email.backends.CeleryEmailBackend"
