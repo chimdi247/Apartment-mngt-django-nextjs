@@ -8,7 +8,7 @@ services:
     image: estate_prod_api
     container_name: estate_prod_api
     volumes:
-      - ./staticfiles:/app/staticfiles   # ✅ ONLY this (safe)
+      - estate_staticfiles:/app/staticfiles   # ✅ FIXED
     expose:
       - "5000"
     env_file:
@@ -58,6 +58,9 @@ services:
       dockerfile: ./docker/local/Dockerfile
     container_name: estate_client
     image: estate_client
+    volumes:
+      - ./client:/app
+      - /app/node_modules
     expose:
       - "3000"
     # ❌ removed volume to avoid permission issues
@@ -102,7 +105,7 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - ./staticfiles:/app/staticfiles   # ✅ shared with Django
+      - estate_staticfiles:/app/staticfiles   # ✅ SAME VOLUME 
       - logs_store:/var/log/nginx
     depends_on:
       - api
@@ -123,7 +126,8 @@ networks:
 # Volumes
 # -------------------------------
 volumes:
-  estate_prod_postgres_data:
-  estate_prod_mailpit_data:
-  estate_redis_prod_data:
-  logs_store:
+  estate_staticfiles: {}       # ✅ CRITICAL FIX
+  estate_postgres_data: {}
+  estate_redis_data: {}
+  estate_mailpit_data: {}
+  logs_store: {}
