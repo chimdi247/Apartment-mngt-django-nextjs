@@ -96,8 +96,8 @@ COPY --chown=django:django . ${APP_HOME}
 # -------------------------------
 # 🔥 CRITICAL FIX (permissions)
 # -------------------------------
-RUN mkdir -p ${APP_HOME}/staticfiles && \
-    chown -R django:django ${APP_HOME} && \
+RUN mkdir -p ${APP_HOME}/staticfiles/admin && \
+    chown -R django:django ${APP_HOME}/staticfiles && \
     chmod -R 775 ${APP_HOME}/staticfiles
 
 
