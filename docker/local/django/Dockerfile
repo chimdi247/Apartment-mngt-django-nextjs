@@ -1,34 +1,26 @@
-# -------------------------------
-# Base Image
-# -------------------------------
-FROM docker.io/python:3.12.2-slim-bookworm as python
+# Base Python image
+FROM python:3.12.2-slim-bookworm AS base
 
-
-# -------------------------------
-# Stage 1: Build dependencies
-# -------------------------------
-FROM python AS python-build-stage
+# ---- Build stage ----
+FROM base AS build-stage
 
 ARG BUILD_ENVIRONMENT=local
 
+# Install build dependencies
 RUN apt-get update && apt-get install --no-install-recommends -y \
-  build-essential \
-  libpq-dev \
-  && rm -rf /var/lib/apt/lists/*
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY ./requirements /requirements
+# Copy requirements and build wheels
+COPY ./requirements ./
+RUN pip wheel --wheel-dir /wheels -r ${BUILD_ENVIRONMENT}.txt
 
-RUN pip wheel --wheel-dir /usr/src/app/wheels \
-  -r /requirements/${BUILD_ENVIRONMENT}.txt
+# ---- Run stage ----
+FROM base AS run-stage
 
-
-# -------------------------------
-# Stage 2: Runtime
-# -------------------------------
-FROM python AS python-run-stage
-
-ARG BUILD_ENVIRONMENT=local
 ARG APP_HOME=/app
+ARG BUILD_ENVIRONMENT=local
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -36,78 +28,48 @@ ENV BUILD_ENV=${BUILD_ENVIRONMENT}
 
 WORKDIR ${APP_HOME}
 
-
-# -------------------------------
-# System dependencies
-# -------------------------------
+# Install runtime dependencies
 RUN apt-get update && apt-get install --no-install-recommends -y \
-  libpq-dev \
-  gettext \
-  sudo \
-  git \
-  bash-completion \
-  nano \
-  ssh \
-  && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
-  && rm -rf /var/lib/apt/lists/*
+    libpq-dev \
+    gettext \
+    sudo \
+    git \
+    bash-completion \
+    nano \
+    && rm -rf /var/lib/apt/lists/*
 
-
-# -------------------------------
-# Create user
-# -------------------------------
+# Create django user and staticfiles directory
 RUN addgroup --system django && \
-    adduser --system --ingroup django django
+    adduser --system --ingroup django django && \
+    mkdir -p ${APP_HOME}/staticfiles && \
+    chown -R django:django ${APP_HOME} && \
+    chmod -R 775 ${APP_HOME}
 
-
-# -------------------------------
 # Install Python dependencies
-# -------------------------------
-COPY --from=python-build-stage /usr/src/app/wheels /wheels/
-
+COPY --from=build-stage /wheels /wheels
 RUN pip install --no-cache-dir --no-index --find-links=/wheels /wheels/* \
-  && rm -rf /wheels/
+    && rm -rf /wheels
 
-
-# -------------------------------
-# Copy scripts
-# -------------------------------
+# Copy entrypoints
 COPY --chown=django:django ./docker/local/django/entrypoint.sh /entrypoint
-RUN sed -i 's/\r$//g' /entrypoint && chmod +x /entrypoint
+RUN chmod +x /entrypoint
 
 COPY --chown=django:django ./docker/local/django/start.sh /start
-RUN sed -i 's/\r$//g' /start && chmod +x /start
+RUN chmod +x /start
 
 COPY --chown=django:django ./docker/local/django/celery/worker/start.sh /start-celeryworker
-RUN sed -i 's/\r$//g' /start-celeryworker && chmod +x /start-celeryworker
+RUN chmod +x /start-celeryworker
 
 COPY --chown=django:django ./docker/local/django/celery/beat/start.sh /start-celerybeat
-RUN sed -i 's/\r$//g' /start-celerybeat && chmod +x /start-celerybeat
+RUN chmod +x /start-celerybeat
 
 COPY --chown=django:django ./docker/local/django/celery/flower/start.sh /start-flower
-RUN sed -i 's/\r$//g' /start-flower && chmod +x /start-flower
+RUN chmod +x /start-flower
 
-
-# -------------------------------
-# Copy application code
-# -------------------------------
+# Copy project files
 COPY --chown=django:django . ${APP_HOME}
 
-
-# -------------------------------
-# 🔥 CRITICAL FIX (permissions)
-# -------------------------------
-RUN mkdir -p ${APP_HOME}/staticfiles && \
-    chown -R django:django ${APP_HOME} && \
-    chmod -R 775 ${APP_HOME}/staticfiles
-
-
-# -------------------------------
-# Switch to non-root user
-# -------------------------------
+# Switch to django user
 USER django
 
-
-# -------------------------------
-# Entrypoint
-# -------------------------------
 ENTRYPOINT ["/entrypoint"]

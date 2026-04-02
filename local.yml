@@ -1,14 +1,12 @@
-version: "3.9"
-
 services:
-  api: &api
+  api:
     build:
       context: .
       dockerfile: ./docker/local/django/Dockerfile
     image: estate_prod_api
     container_name: estate_prod_api
     volumes:
-      - ./staticfiles:/app/staticfiles   # ✅ ONLY this (safe)
+      - estate_prod_staticfiles:/app/staticfiles
     expose:
       - "5000"
     env_file:
@@ -22,10 +20,7 @@ services:
       - estate_prod_nw
 
   postgres:
-    build:
-      context: .
-      dockerfile: ./docker/local/postgres/Dockerfile
-    image: estate_prod_postgres
+    image: postgres:15-alpine
     container_name: estate_prod_postgres
     ports:
       - "5432:5432"
@@ -37,36 +32,18 @@ services:
       - estate_prod_nw
 
   mailpit:
-    image: docker.io/axllent/mailpit:v1.15
+    image: axllent/mailpit:v1.15
     container_name: estate_prod_mailpit
     ports:
       - "8025:8025"
       - "1025:1025"
     volumes:
       - estate_prod_mailpit_data:/data
-    environment:
-      MP_MAX_MESSAGES: 5000
-      MP_DATA_FILE: /data/mailpit.db
-      MP_SMTP_AUTH_ACCEPT_ANY: 1
-      MP_SMTP_AUTH_ALLOW_INSECURE: 1
-    networks:
-      - estate_prod_nw
-
-  client:
-    build:
-      context: ./client
-      dockerfile: ./docker/local/Dockerfile
-    container_name: estate_client
-    image: estate_client
-    expose:
-      - "3000"
-    # ❌ removed volume to avoid permission issues
     networks:
       - estate_prod_nw
 
   redis:
     image: redis:7.0-alpine3.19
-    command: redis-server --appendonly yes
     container_name: estate_redis
     volumes:
       - estate_redis_prod_data:/data
@@ -74,56 +51,71 @@ services:
       - estate_prod_nw
 
   celeryworker:
-    <<: *api
+    build:
+      context: .
+      dockerfile: ./docker/local/django/Dockerfile
     image: estate_prod_celeryworker
     container_name: estate_prod_celeryworker
+    volumes:
+      - estate_prod_staticfiles:/app/staticfiles
     command: /start-celeryworker
+    depends_on:
+      - api
+    networks:
+      - estate_prod_nw
 
   celerybeat:
-    <<: *api
+    build:
+      context: .
+      dockerfile: ./docker/local/django/Dockerfile
     image: estate_prod_celerybeat
     container_name: estate_prod_celerybeat
+    volumes:
+      - estate_prod_staticfiles:/app/staticfiles
     command: /start-celerybeat
+    depends_on:
+      - api
+    networks:
+      - estate_prod_nw
 
   flower:
-    <<: *api
+    build:
+      context: .
+      dockerfile: ./docker/local/django/Dockerfile
     image: estate_prod_flower
     container_name: estate_prod_flower
     ports:
       - "5555:5555"
+    volumes:
+      - estate_prod_staticfiles:/app/staticfiles
     command: /start-flower
+    depends_on:
+      - api
+    networks:
+      - estate_prod_nw
 
   nginx:
     build:
       context: ./docker/local/nginx
       dockerfile: Dockerfile
     container_name: estate_nginx
-    restart: always
     ports:
       - "8080:80"
     volumes:
-      - ./staticfiles:/app/staticfiles   # ✅ shared with Django
+      - estate_prod_staticfiles:/app/staticfiles
       - logs_store:/var/log/nginx
     depends_on:
       - api
-      - client
     networks:
       - estate_prod_nw
 
-
-# -------------------------------
-# Networks
-# -------------------------------
 networks:
   estate_prod_nw:
     driver: bridge
 
-
-# -------------------------------
-# Volumes
-# -------------------------------
 volumes:
-  estate_prod_postgres_data:
-  estate_prod_mailpit_data:
-  estate_redis_prod_data:
-  logs_store:
+  estate_prod_staticfiles: {}
+  estate_prod_postgres_data: {}
+  estate_prod_mailpit_data: {}
+  estate_redis_prod_data: {}
+  logs_store: {}
