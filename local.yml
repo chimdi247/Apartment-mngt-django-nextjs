@@ -14,7 +14,7 @@ services:
     expose:
       - "8000"
     env_file:
-      - ./.envs/.env.example
+      - ./.envs/.env.local
     depends_on:
       - postgres
       - mailpit
@@ -34,7 +34,7 @@ services:
     volumes:
       - estate_prod_postgres_data:/var/lib/postgresql/data
     env_file:
-      - ./.envs/.env.example
+      - ./.envs/.env.local
     networks:
       - estate_prod_nw
 
